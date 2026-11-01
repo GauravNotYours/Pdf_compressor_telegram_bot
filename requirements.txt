@@ -1,0 +1,6 @@
+python-telegram-bot>=21.10,<23
+PyMuPDF>=1.24,<2
+Pillow>=10,<13
+pymongo>=4.8,<5
+dnspython>=2.7,<3
+python-dotenv>=1.0,<2

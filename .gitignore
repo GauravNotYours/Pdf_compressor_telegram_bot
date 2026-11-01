@@ -1,0 +1,69 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+### Python bytecode & cache
+
+**pycache**/
+*.py[cod]
+*$py.class
+*.so
+.Python 
+
+### Environments & Packages
+
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+bin/
+lib/
+lib64/
+include/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+dist/
+build/ 
+
+### Testing & Coverage
+
+.cache/
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.hypothesis/
+htmlcov/
+coverage.xml
+nosetests.xml 
+
+### Jupyter Notebook & Tools
+
+.ipynb_checkpoints
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+cython_debug/ 
+
+### OS-specific files
+
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db 
+
+### IDEs and Code Editors
+
+.idea/
+.vscode/
+*.swp
+*.swo

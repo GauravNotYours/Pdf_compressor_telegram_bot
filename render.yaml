@@ -1,0 +1,17 @@
+services:
+  - type: worker
+    name: pdf-compressor-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python first.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: BOT_TOKEN
+        sync: false
+      - key: ALLOWED_USERNAMES
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DATABASE
+        value: pdf_compressor
