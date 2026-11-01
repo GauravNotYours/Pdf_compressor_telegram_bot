@@ -4,6 +4,8 @@ A private Telegram bot that accepts PDFs, rasterizes each page using PyMuPDF and
 
 The original PDF is processed in memory and is never saved to MongoDB. GridFS stores the compressed PDF bytes along with its required file/chunk records. The compression process turns pages into JPEG images, so the resulting PDF is not searchable and does not retain interactive forms, links, or digital signatures.
 
+(NOTE🔴:- I have not added any security features in it.)
+
 ## 1. Create a Telegram bot
 
 1. Open Telegram and start a chat with [@BotFather](https://t.me/BotFather).
