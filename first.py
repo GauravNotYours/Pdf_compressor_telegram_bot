@@ -1,10 +1,13 @@
 import asyncio
+import hmac
 import io
+import json
 import logging
 import os
 import re
 import sys
 
+from aiohttp import web
 import pymupdf
 from dotenv import load_dotenv
 from gridfs import GridFSBucket
@@ -238,6 +241,61 @@ async def handle_other_message(
     await message.reply_text("Please send a PDF document.")
 
 
+def create_web_app(application: Application, webhook_secret: str) -> web.Application:
+    web_app = web.Application()
+
+    async def health_check(request: web.Request) -> web.Response:
+        return web.Response(text="ok")
+
+    async def receive_telegram_update(request: web.Request) -> web.Response:
+        provided_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+        if not hmac.compare_digest(provided_secret, webhook_secret):
+            raise web.HTTPUnauthorized()
+
+        try:
+            update_data = json.loads(await request.read())
+        except web.HTTPRequestEntityTooLarge:
+            raise
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise web.HTTPBadRequest(text="Invalid Telegram update") from exc
+        if not isinstance(update_data, dict):
+            raise web.HTTPBadRequest(text="Invalid Telegram update")
+
+        update = Update.de_json(update_data, application.bot)
+        await application.update_queue.put(update)
+        return web.Response(text="ok")
+
+    web_app.router.add_get("/health", health_check)
+    web_app.router.add_post("/telegram-webhook", receive_telegram_update)
+    return web_app
+
+
+async def run_webhook_server(
+    application: Application,
+    webhook_url: str,
+    webhook_secret: str,
+    port: int,
+) -> None:
+    await application.initialize()
+    runner = web.AppRunner(create_web_app(application, webhook_secret))
+    try:
+        await runner.setup()
+        site = web.TCPSite(runner, host="0.0.0.0", port=port)
+        await site.start()
+        await application.start()
+        await application.bot.set_webhook(
+            url=f"{webhook_url.rstrip('/')}/telegram-webhook",
+            secret_token=webhook_secret,
+        )
+        logger.info("Telegram webhook server started on port %d", port)
+        await asyncio.Event().wait()
+    finally:
+        if application.running:
+            await application.stop()
+        await runner.cleanup()
+        await application.shutdown()
+
+
 def main() -> None:
     load_dotenv()
     token = os.getenv("BOT_TOKEN", "").strip()
@@ -302,8 +360,37 @@ def main() -> None:
             )
         )
 
-        logger.info("Bot started; authorized Telegram usernames: %d", len(allowed_usernames))
-        application.run_polling()
+        webhook_url = (
+            os.getenv("WEBHOOK_URL", "").strip()
+            or os.getenv("RENDER_EXTERNAL_URL", "").strip()
+        )
+        if webhook_url:
+            webhook_secret = os.getenv("WEBHOOK_SECRET", "").strip()
+            if re.fullmatch(r"[A-Za-z0-9_-]{1,256}", webhook_secret) is None:
+                logger.error(
+                    "Set WEBHOOK_SECRET to 1-256 characters using letters, numbers, "
+                    "underscores, or hyphens."
+                )
+                sys.exit(1)
+            port = int(os.getenv("PORT", "10000"))
+            logger.info(
+                "Starting webhook bot; authorized Telegram usernames: %d",
+                len(allowed_usernames),
+            )
+            asyncio.run(
+                run_webhook_server(
+                    application,
+                    webhook_url,
+                    webhook_secret,
+                    port,
+                )
+            )
+        else:
+            logger.info(
+                "Starting local polling bot; authorized Telegram usernames: %d",
+                len(allowed_usernames),
+            )
+            application.run_polling()
     except PyMongoError:
         logger.exception("Could not connect to MongoDB")
         sys.exit(1)

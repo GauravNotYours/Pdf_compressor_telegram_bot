@@ -1,9 +1,11 @@
 services:
-  - type: worker
+  - type: web
     name: pdf-compressor-bot
     runtime: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python first.py
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.11
@@ -12,6 +14,8 @@ services:
       - key: ALLOWED_USERNAMES
         sync: false
       - key: MONGODB_URI
+        sync: false
+      - key: WEBHOOK_SECRET
         sync: false
       - key: MONGODB_DATABASE
         value: pdf_compressor

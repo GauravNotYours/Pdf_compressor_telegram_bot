@@ -40,7 +40,7 @@ MONGODB_URI=your_mongodb_connection_string
 MONGODB_DATABASE=pdf_compressor
 ```
 
-Start the bot:
+Start the bot locally (it uses Telegram long polling when `WEBHOOK_URL` and `RENDER_EXTERNAL_URL` are unset):
 
 ```powershell
 python first.py
@@ -48,21 +48,25 @@ python first.py
 
 In Telegram, open a private chat with your bot and send `/start`, then upload a PDF as a document. Send `/stop` to disable the bot for your account until you send `/start` again. The bot accepts input PDFs up to 20 MB and sends compressed PDFs up to Telegram's 50 MB document limit.
 
-## 5. Deploy on Render
+## 5. Deploy on Render Free
 
-This project includes a `render.yaml` Blueprint for a Render **Background Worker**. A worker is appropriate because the bot uses Telegram long polling and does not need a public web server. Render Background Workers require a paid instance.
+This project includes a `render.yaml` Blueprint for a Render **Free Web Service**. In production, the bot switches to Telegram webhooks and serves `/health` for Render health checks. Render's free web services can spin down after inactivity, so the first request after a sleep may take longer while the service starts.
 
 1. Push this project to a GitHub repository. Ensure `.env` is not committed; `.gitignore` excludes it.
-2. In Render, choose **New + → Blueprint**, connect the repository, and deploy the Blueprint.
-3. Add the values requested for `BOT_TOKEN`, `ALLOWED_USERNAMES`, and `MONGODB_URI` in the Render service's environment settings. `MONGODB_DATABASE` is set to `pdf_compressor` by the Blueprint and can be changed there.
-4. Confirm the worker logs show `Bot started`. Then message the bot privately and send `/start`.
+2. In Render, choose **New + → Blueprint**, connect the repository, and deploy the Blueprint. It creates a Free Web Service and uses Render's `PORT` and `RENDER_EXTERNAL_URL` environment variables automatically.
+3. Add the values requested for `BOT_TOKEN`, `ALLOWED_USERNAMES`, `MONGODB_URI`, and `WEBHOOK_SECRET` in the Render service's environment settings. `MONGODB_DATABASE` is set to `pdf_compressor` by the Blueprint and can be changed there.
+4. Generate a webhook secret locally with `python -c "import secrets; print(secrets.token_urlsafe(32))"` and paste the result into Render's `WEBHOOK_SECRET` environment variable. Do not share or commit this secret.
+5. Confirm the deployment is healthy and the logs show `Telegram webhook server started`. Then message the bot privately and send `/start`.
 
-If you do not use the Blueprint, create a Background Worker manually with build command `pip install -r requirements.txt` and start command `python first.py`, then set the same environment variables.
+If you do not use the Blueprint, create a **Web Service** manually with build command `pip install -r requirements.txt`, start command `python first.py`, and health check path `/health`. Set the same environment variables. Keep only one running bot instance for a Telegram token.
 
 ## Configuration and limits
 
 - `BOT_TOKEN`: token from BotFather.
 - `ALLOWED_USERNAMES`: comma-separated Telegram usernames without `@`. Only these users can use the bot. Usernames can change, so update the allowlist if an authorized user changes theirs.
+- `WEBHOOK_SECRET`: a private string used to verify Telegram webhook requests. Required when running in webhook mode.
+- `WEBHOOK_URL`: optional public base URL override. On Render the bot uses `RENDER_EXTERNAL_URL` automatically; locally, leave this unset to use polling.
+- `PORT`: Render's listening port, assigned automatically.
 - `MONGODB_URI`: MongoDB connection string.
 - `MONGODB_DATABASE`: database name.
 - Compression uses 150 DPI rendering and JPEG quality 70. Rasterizing can reduce file size but trades away searchable text and vector quality.
